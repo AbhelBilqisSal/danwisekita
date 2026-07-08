@@ -27,7 +27,8 @@ class _StoreScreenState extends State<StoreScreen> {
 
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
-    _products = await _apiService.getProducts(sellerId: widget.seller['id']);
+    _products = await _apiService.getProducts(
+        sellerId: widget.seller['id']?.toString());
     setState(() => _isLoading = false);
   }
 
@@ -38,7 +39,7 @@ class _StoreScreenState extends State<StoreScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.seller['name']),
+        title: Text(widget.seller['nama_toko']?.toString() ?? 'Toko'),
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFFDC2626),
         elevation: 0,
@@ -116,7 +117,7 @@ class _StoreScreenState extends State<StoreScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.seller['name'],
+                            widget.seller['nama_toko']?.toString() ?? 'Toko',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -124,23 +125,17 @@ class _StoreScreenState extends State<StoreScreen> {
                             ),
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.star, size: 16, color: Colors.amber),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${widget.seller['rating']}',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              const SizedBox(width: 16),
-                              const Icon(Icons.location_on, size: 16, color: Colors.white70),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${widget.seller['distance']}m',
-                                style: const TextStyle(color: Colors.white70),
-                              ),
-                            ],
-                          ),
+                          if (widget.seller['distance'] != null)
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 16, color: Colors.white70),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${(widget.seller['distance'] as num).toStringAsFixed(1)} km',
+                                  style: const TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                     ),
@@ -148,28 +143,8 @@ class _StoreScreenState extends State<StoreScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  widget.seller['description'],
+                  widget.seller['alamat']?.toString() ?? '',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: (widget.seller['categories'] as List).map((cat) {
-                      return Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          cat,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ),
               ],
             ),
@@ -248,7 +223,7 @@ class _StoreScreenState extends State<StoreScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['name'],
+                    product['nama_barang']?.toString() ?? '',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -258,7 +233,7 @@ class _StoreScreenState extends State<StoreScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rp ${_formatNumber(product['price'])}',
+                    'Rp ${_formatNumber(product['harga'])}',
                     style: const TextStyle(
                       color: Color(0xFFDC2626),
                       fontWeight: FontWeight.bold,
@@ -271,19 +246,19 @@ class _StoreScreenState extends State<StoreScreen> {
                     child: ElevatedButton(
                       onPressed: () {
                         final cartItem = CartItem(
-                          productId: product['id'],
-                          productName: product['name'],
-                          price: product['price'].toDouble(),
-                          imageUrl: '',
+                          productId: product['id'].toString(),
+                          productName: product['nama_barang']?.toString() ?? '',
+                          price: (product['harga'] as num).toDouble(),
+                          imageUrl: product['gambar']?.toString() ?? '',
                           quantity: 1,
-                          sellerId: widget.seller['id'],
-                          sellerName: widget.seller['name'],
-                          stock: product['stock'] ?? 99,
+                          sellerId: widget.seller['id'].toString(),
+                          sellerName: widget.seller['nama_toko']?.toString() ?? 'Toko',
+                          stock: (product['stok'] as num?)?.toInt() ?? 99,
                         );
                         cartProvider.addToCart(cartItem);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${product['name']} ditambahkan ke keranjang'),
+                            content: Text('${product['nama_barang']} ditambahkan ke keranjang'),
                             duration: const Duration(seconds: 1),
                           ),
                         );

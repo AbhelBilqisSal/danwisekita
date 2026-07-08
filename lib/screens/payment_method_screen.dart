@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -45,48 +43,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     setState(() => _isLoading = false);
   }
 
-  Future<void> _uploadQrisWeb() async {
-    try {
-      final input = html.FileUploadInputElement();
-      input.accept = 'image/*';
-      input.click();
-      await input.onChange.first;
-      if (input.files!.isEmpty) return;
-      final file = input.files![0];
-      if (file.size > 2 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ukuran file maksimal 2MB')),
-        );
-        return;
-      }
-      setState(() => _isLoading = true);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.currentUser?.id ?? '';
-      final result = await _apiService.uploadQris(file, userId);
-      setState(() => _isLoading = false);
-      if (result['success'] == true) {
-        setState(() {
-          _hasQris = true;
-          _qrisImageUrl = result['data']['qris_image'];
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ QRIS berhasil diupload')),
-        );
-        _loadQris();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Gagal upload QRIS')),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  Future<void> _uploadQrisMobile() async {
+  Future<void> _uploadQris() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.gallery,
@@ -94,39 +51,31 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       maxWidth: 512,
       maxHeight: 512,
     );
-    if (image != null) {
-      setState(() => _isLoading = true);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final userId = authService.currentUser?.id ?? '';
-      final result = await _apiService.uploadQris(image, userId);
-      setState(() => _isLoading = false);
-      if (result['success'] == true) {
-        setState(() {
-          _hasQris = true;
-          _qrisImageUrl = result['data']['qris_image'];
-        });
+    if (image == null) return;
+
+    setState(() => _isLoading = true);
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final userId = authService.currentUser?.id ?? '';
+    final result = await _apiService.uploadQris(image, userId);
+    setState(() => _isLoading = false);
+
+    if (result['success'] == true) {
+      setState(() {
+        _hasQris = true;
+        _qrisImageUrl = result['data']['qris_image'];
+      });
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ QRIS berhasil diupload')),
         );
-        _loadQris();
-      } else {
+      }
+      _loadQris();
+    } else {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(result['message'] ?? 'Gagal upload QRIS')),
         );
       }
-    }
-  }
-
-  Future<void> _uploadQris() async {
-    // ignore: undefined_prefixed_name
-    try {
-      if (html.window != null) {
-        await _uploadQrisWeb();
-      } else {
-        await _uploadQrisMobile();
-      }
-    } catch (e) {
-      await _uploadQrisMobile();
     }
   }
 
@@ -156,11 +105,7 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
     );
     if (confirm == true) {
       setState(() => _isLoading = true);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final result = await _apiService.updateProfile({
-        'id': authService.currentUser?.id ?? '',
-        'qris_image': null,
-      });
+      final result = await _apiService.deleteQris();
       setState(() => _isLoading = false);
       if (result['success'] == true) {
         setState(() {

@@ -210,9 +210,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             _passwordController.text,
                             widget.selectedRole,
                           );
+
+                          // Jika layar login sudah ditutup/pindah selama proses
+                          // await di atas, hentikan di sini agar tidak memanggil
+                          // setState()/Navigator pada widget yang sudah dispose.
+                          if (!mounted) return;
+
                           setState(() => _isLoading = false);
 
-                          if (success && mounted) {
+                          if (success) {
                             if (widget.selectedRole == 'buyer') {
                               Navigator.pushReplacement(
                                 context,
@@ -228,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         const SellerDashboard()),
                               );
                             }
-                          } else if (mounted) {
+                          } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(authService.errorMessage ??

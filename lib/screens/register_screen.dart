@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
-import 'buyer_homepage.dart';
-import 'seller_dashboard.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String selectedRole;
@@ -18,11 +17,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _storeNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLoading = false;
+
+  bool get _isSeller => widget.selectedRole == 'seller';
 
   @override
   Widget build(BuildContext context) {
@@ -143,6 +145,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                if (_isSeller) ...[
+                  _buildFieldLabel('Nama Toko'),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _storeNameController,
+                    decoration: _buildInputDecoration(
+                      hintText: 'Masukkan nama toko Anda',
+                      icon: Icons.storefront_outlined,
+                    ),
+                    validator: (value) {
+                      if (_isSeller && (value == null || value.isEmpty)) {
+                        return 'Nama toko harus diisi';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 _buildFieldLabel('Kata Sandi'),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -226,6 +247,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 'phone': _phoneController.text,
                                 'password': _passwordController.text,
                                 'role': widget.selectedRole,
+                                if (_isSeller)
+                                  'storeName': _storeNameController.text,
                               };
 
                               final success =
@@ -233,21 +256,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               setState(() => _isLoading = false);
 
                               if (success && mounted) {
-                                if (widget.selectedRole == 'buyer') {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const BuyerHomepage()),
-                                  );
-                                } else {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (context) =>
-                                            const SellerDashboard()),
-                                  );
-                                }
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Pendaftaran berhasil! Akun Anda menunggu persetujuan admin sebelum bisa login.'),
+                                    backgroundColor: Colors.green,
+                                    duration: Duration(seconds: 4),
+                                  ),
+                                );
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => LoginScreen(
+                                        selectedRole: widget.selectedRole),
+                                  ),
+                                );
                               } else if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -360,6 +383,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _storeNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();

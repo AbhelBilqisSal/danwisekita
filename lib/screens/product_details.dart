@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
 import '../providers/cart_provider.dart';
 import '../models/cart_model.dart';
 
@@ -36,11 +35,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   List<String> get _productImages {
-    final images = widget.product['images'];
-    if (images is List) {
-      return images.cast<String>();
-    }
-    final image = widget.product['image']?.toString();
+    final image = widget.product['gambar']?.toString();
     if (image != null && image.isNotEmpty) {
       return [image];
     }
@@ -116,12 +111,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final images = _productImages;
 
     final productId = _getString(product['id']);
-    final productName = _getString(product['name']);
-    final productPrice = _getDouble(product['price']);
-    final productStock = _getInt(product['stock']);
-    final description = _getString(product['description']);
-    final category = _getString(product['category']);
-    final sellerId = _getString(product['seller_id']);
+    final productName = _getString(product['nama_barang']);
+    final productPrice = _getDouble(product['harga']);
+    final productStock = _getInt(product['stok']);
+    final description = _getString(product['deskripsi']);
+    final category = _getString(product['kategori']);
+    final sellerId = _getString(product['toko_id']);
 
     return Scaffold(
       backgroundColor: Colors.white,

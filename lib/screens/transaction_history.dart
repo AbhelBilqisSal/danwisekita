@@ -35,12 +35,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
     final allOrders = await _apiService.getOrders(buyerId: buyerId);
 
+    const activeStatuses = ['pending', 'paid', 'menunggu_verifikasi', 'proses'];
     _activeOrders = allOrders
-        .where((o) => o != null && (o['status'] == 'pending' || o['status'] == 'processing'))
+        .where((o) => o != null && activeStatuses.contains(o['status']))
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
     _completedOrders = allOrders
-        .where((o) => o != null && (o['status'] == 'completed' || o['status'] == 'rejected'))
+        .where((o) => o != null && (o['status'] == 'selesai' || o['status'] == 'cancelled'))
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
 
@@ -183,11 +184,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   Widget _buildOrderCard(Map<String, dynamic> order) {
     final items = order['items'] as List? ?? [];
     final status = order['status'] ?? 'pending';
-    final isCompleted = status == 'completed';
-    final isRejected = status == 'rejected';
+    final isCompleted = status == 'selesai';
+    final isRejected = status == 'cancelled';
     final isFinished = isCompleted || isRejected;
-    final isPending = status == 'pending';
-    final isProcessing = status == 'processing';
+    final isPending = status == 'pending' || status == 'paid' || status == 'menunggu_verifikasi';
     final sellerName = order['seller_name'] ?? 'Penjual';
 
     return Container(
@@ -544,24 +544,26 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
     switch (status) {
       case 'pending':
+      case 'paid':
+      case 'menunggu_verifikasi':
         bgColor = Colors.orange.shade100;
         textColor = Colors.orange.shade700;
         text = 'Menunggu';
         icon = Icons.schedule;
         break;
-      case 'processing':
+      case 'proses':
         bgColor = Colors.blue.shade100;
         textColor = Colors.blue.shade700;
         text = 'Diproses';
         icon = Icons.local_shipping;
         break;
-      case 'completed':
+      case 'selesai':
         bgColor = Colors.green.shade100;
         textColor = Colors.green.shade700;
         text = 'Selesai';
         icon = Icons.check_circle;
         break;
-      case 'rejected':
+      case 'cancelled':
         bgColor = Colors.red.shade100;
         textColor = Colors.red.shade700;
         text = 'Ditolak';

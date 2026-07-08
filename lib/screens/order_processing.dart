@@ -32,16 +32,17 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     
     final allOrders = await _apiService.getOrders(sellerId: sellerId);
     
+    const pendingStatuses = ['pending', 'paid', 'menunggu_verifikasi'];
     _pendingOrders = allOrders
-        .where((o) => o != null && o['status'] == 'pending')
+        .where((o) => o != null && pendingStatuses.contains(o['status']))
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
     _processingOrders = allOrders
-        .where((o) => o != null && o['status'] == 'processing')
+        .where((o) => o != null && o['status'] == 'proses')
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
     _completedOrders = allOrders
-        .where((o) => o != null && (o['status'] == 'completed' || o['status'] == 'rejected'))
+        .where((o) => o != null && (o['status'] == 'selesai' || o['status'] == 'cancelled'))
         .map((o) => Map<String, dynamic>.from(o as Map))
         .toList();
     
@@ -227,8 +228,8 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
       final qVal = q is int ? q : (int.tryParse(q.toString()) ?? 0);
       return sum + qVal;
     });
-    final isCompleted = order['status'] == 'completed';
-    final isRejected = order['status'] == 'rejected';
+    final isCompleted = order['status'] == 'selesai';
+    final isRejected = order['status'] == 'cancelled';
     final isFinished = isCompleted || isRejected;
     
     return Card(
@@ -432,7 +433,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                 ),
               ),
             ],
-            if (order['status'] == 'processing') ...[
+            if (order['status'] == 'proses') ...[
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -571,7 +572,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                     ),
                   ],
                 ),
-                if (order['status'] == 'pending')
+                if (['pending', 'paid', 'menunggu_verifikasi'].contains(order['status']))
                   Row(
                     children: [
                       ElevatedButton(
@@ -597,7 +598,7 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
                       ),
                     ],
                   ),
-                if (order['status'] == 'processing')
+                if (order['status'] == 'proses')
                   ElevatedButton(
                     onPressed: () => _completeOrder(order['id']),
                     style: ElevatedButton.styleFrom(
@@ -657,12 +658,14 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'pending':
+      case 'paid':
+      case 'menunggu_verifikasi':
         return Colors.orange.shade100;
-      case 'processing':
+      case 'proses':
         return Colors.blue.shade100;
-      case 'completed':
+      case 'selesai':
         return Colors.green.shade100;
-      case 'rejected':
+      case 'cancelled':
         return Colors.red.shade100;
       default:
         return Colors.grey.shade100;
@@ -672,12 +675,14 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
   Color _getStatusTextColor(String status) {
     switch (status) {
       case 'pending':
+      case 'paid':
+      case 'menunggu_verifikasi':
         return Colors.orange.shade700;
-      case 'processing':
+      case 'proses':
         return Colors.blue.shade700;
-      case 'completed':
+      case 'selesai':
         return Colors.green.shade700;
-      case 'rejected':
+      case 'cancelled':
         return Colors.red.shade700;
       default:
         return Colors.grey.shade700;
@@ -688,11 +693,15 @@ class _OrderProcessingScreenState extends State<OrderProcessingScreen> {
     switch (status) {
       case 'pending':
         return 'Menunggu';
-      case 'processing':
+      case 'paid':
+        return 'Sudah Dibayar';
+      case 'menunggu_verifikasi':
+        return 'Menunggu Verifikasi';
+      case 'proses':
         return 'Diproses';
-      case 'completed':
+      case 'selesai':
         return 'Selesai';
-      case 'rejected':
+      case 'cancelled':
         return 'Ditolak';
       default:
         return status;

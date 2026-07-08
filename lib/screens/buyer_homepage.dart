@@ -55,11 +55,11 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
 
     return _allProducts.where((product) {
       final matchesSearch = _searchController.text.isEmpty ||
-          product['name']
+          (product['nama_barang']?.toString() ?? '')
               .toLowerCase()
               .contains(_searchController.text.toLowerCase());
       final matchesCategory = _selectedCategory == 'Semua' ||
-          product['category'] == _selectedCategory;
+          product['kategori'] == _selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList();
   }
@@ -110,11 +110,11 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    final productName = product['name']?.toString() ?? '';
-    final productPrice = product['price'] is String
-        ? double.tryParse(product['price']) ?? 0.0
-        : (product['price'] as num?)?.toDouble() ?? 0.0;
-    final image = product['image']?.toString();
+    final productName = product['nama_barang']?.toString() ?? '';
+    final productPrice = product['harga'] is String
+        ? double.tryParse(product['harga']) ?? 0.0
+        : (product['harga'] as num?)?.toDouble() ?? 0.0;
+    final image = product['gambar']?.toString();
 
     return GestureDetector(
       onTap: () {
@@ -205,6 +205,17 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]}.',
     );
+  }
+
+  String _sellerName(dynamic seller) =>
+      seller['nama_toko']?.toString() ?? 'Toko';
+
+  String _sellerDistanceLabel(dynamic seller) {
+    final distance = seller['distance'];
+    if (distance == null) return '';
+    final km = distance is num ? distance : double.tryParse(distance.toString());
+    if (km == null) return '';
+    return '${km.toStringAsFixed(1)} km';
   }
 
   @override
@@ -794,8 +805,8 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
               ),
               child: Center(
                 child: Text(
-                  seller['name'] != null && seller['name'].toString().isNotEmpty
-                      ? seller['name'][0].toUpperCase()
+                  _sellerName(seller).isNotEmpty
+                      ? _sellerName(seller)[0].toUpperCase()
                       : 'T',
                   style: const TextStyle(
                     color: Colors.white,
@@ -807,7 +818,7 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
             ),
             const SizedBox(height: 8),
             Text(
-              seller['name'] ?? 'Toko',
+              _sellerName(seller),
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -821,10 +832,10 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.star, size: 10, color: Colors.amber),
+                const Icon(Icons.location_on, size: 10, color: Colors.grey),
                 const SizedBox(width: 2),
                 Text(
-                  '${seller['rating'] ?? '0'}',
+                  _sellerDistanceLabel(seller),
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                 ),
               ],
@@ -883,7 +894,7 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                       children: [
                         Flexible(
                           child: Text(
-                            seller['name'],
+                            _sellerName(seller),
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
@@ -891,31 +902,6 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star,
-                                  size: 12, color: Colors.amber.shade700),
-                              const SizedBox(width: 2),
-                              Text(
-                                seller['rating'].toString(),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.amber.shade700,
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],
@@ -926,10 +912,14 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                         Icon(Icons.location_on,
                             size: 12, color: Colors.grey.shade400),
                         const SizedBox(width: 3),
-                        Text(
-                          '${seller['distance']}m • Telkom University',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey.shade500),
+                        Expanded(
+                          child: Text(
+                            '${_sellerDistanceLabel(seller)} • ${seller['alamat'] ?? 'Telkom University'}',
+                            style: TextStyle(
+                                fontSize: 12, color: Colors.grey.shade500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -940,19 +930,15 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: seller['isOpen']
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
+                  color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  seller['isOpen'] ? 'Buka' : 'Tutup',
+                  'Buka',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: seller['isOpen']
-                        ? Colors.green.shade700
-                        : Colors.red.shade700,
+                    color: Colors.green.shade700,
                   ),
                 ),
               ),

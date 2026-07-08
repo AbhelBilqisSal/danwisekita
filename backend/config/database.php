@@ -5,7 +5,7 @@ class Database {
     private $conn;
     
     private $host = 'localhost';
-    private $dbname = 'danwise';
+    private $dbname = 'backend_adminfix';
     private $username = 'root';
     private $password = '';
     

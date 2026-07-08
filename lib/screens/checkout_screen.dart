@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart';
 import '../models/cart_model.dart';
 import 'qris_payment_screen.dart';
 
@@ -45,103 +44,42 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         : 'Bayar Sekarang';
   }
 
-  String _toStringSafe(dynamic value) {
-    if (value == null) return '';
-    if (value is String) return value;
-    if (value is int) return value.toString();
-    if (value is double) return value.toString();
-    return value.toString();
-  }
-
-  double _toDoubleSafe(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
-  }
-
-  int _toIntSafe(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
-
   Future<void> _processCheckout() async {
     setState(() => _isLoading = true);
 
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
-    final authService = Provider.of<AuthService>(context, listen: false);
     final apiService = ApiService();
 
-    await Future.delayed(const Duration(seconds: 2));
-
-    final isSuccess = DateTime.now().millisecondsSinceEpoch % 20 != 0;
+    final result = await apiService.checkout(cartProvider.items);
 
     setState(() => _isLoading = false);
 
-    if (isSuccess) {
-      Map<String, dynamic>? createdOrder;
-
-      for (var item in cartProvider.items) {
-        final buyerId = _toStringSafe(authService.currentUser?.id);
-        final buyerName = _toStringSafe(authService.currentUser?.name);
-        final sellerId = _toStringSafe(item.sellerId);
-        final productId = _toStringSafe(item.productId);
-        final productName = _toStringSafe(item.productName);
-        final price = _toDoubleSafe(item.price);
-        final quantity = _toIntSafe(item.quantity);
-
-        final result = await apiService.createOrder({
-          'buyerId': buyerId.isEmpty ? 'buyer1' : buyerId,
-          'buyerName': buyerName.isEmpty ? 'Pembeli' : buyerName,
-          'sellerId': sellerId.isEmpty ? '1' : sellerId,
-          'items': [
-            {
-              'productId': productId.isEmpty ? '0' : productId,
-              'productName': productName.isEmpty ? 'Produk' : productName,
-              'price': price,
-              'quantity': quantity,
-            }
-          ],
-          'subtotal': price * quantity,
-          'shippingCost': _shippingCost,
-          'tax': 0.0,
-          'total': (price * quantity) + _shippingCost,
-          'paymentMethod': _selectedPaymentMethod,
-          'shippingAddress': '',
-        });
-
-        if (result['success'] == true) {
-          createdOrder = result['data'];
-        }
+    if (result['success'] == true) {
+      final transactions =
+          (result['data']?['transactions'] as List?) ?? const [];
+      String? firstOrderId;
+      if (transactions.isNotEmpty) {
+        final firstTransaction = transactions.first as Map;
+        firstOrderId = firstTransaction['id']?.toString();
       }
 
       cartProvider.clearCart();
 
-      if (mounted) {
-        if (_selectedPaymentMethod == 'qris') {
-          final orderId = _toStringSafe(createdOrder?['id'] ??
-              'order_${DateTime.now().millisecondsSinceEpoch}');
-          final sellerId = cartProvider.items.isNotEmpty
-              ? _toStringSafe(cartProvider.items.first.sellerId)
-              : '1';
+      if (!mounted) return;
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => QrisPaymentScreen(
-                orderId: orderId,
-                amount: cartProvider.subtotal + _shippingCost,
-                sellerId: sellerId,
-              ),
+      if (_selectedPaymentMethod == 'qris' && firstOrderId != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => QrisPaymentScreen(
+              orderId: firstOrderId!,
+              amount: cartProvider.subtotal + _shippingCost,
+              sellerId: '',
             ),
-          );
-        } else {
-          _showSuccessDialog('Pesanan Berhasil!');
-        }
+          ),
+        );
+      } else {
+        _showSuccessDialog('Pesanan Berhasil!');
       }
     } else {
       if (mounted) {
@@ -166,8 +104,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const Text('Proses Gagal!', style: TextStyle(fontSize: 18)),
               ],
             ),
-            content: const Text(
-              'Proses gagal. Silakan coba lagi.',
+            content: Text(
+              result['message']?.toString() ?? 'Proses gagal. Silakan coba lagi.',
               textAlign: TextAlign.center,
             ),
             actions: [

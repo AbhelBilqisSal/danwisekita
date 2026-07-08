@@ -724,7 +724,7 @@ class _SellerDashboardState extends State<SellerDashboard> {
 
   Widget _buildRecentOrderCard(dynamic order) {
     final items = order['items'] as List;
-    final itemNames = items.map((i) => i['productName']).join(', ');
+    final itemNames = items.map((i) => i['product_name']).join(', ');
     
     return Card(
       margin: const EdgeInsets.only(bottom: 12),

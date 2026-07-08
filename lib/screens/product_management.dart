@@ -1,8 +1,5 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
 class ProductManagementScreen extends StatefulWidget {
@@ -26,37 +23,15 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
 
   Future<void> _loadProducts() async {
     setState(() => _isLoading = true);
-    
+
     try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final sellerId = authService.currentUser?.id;
-      
-      List<dynamic> result;
-      
-      if (sellerId != null && sellerId.isNotEmpty) {
-        result = await _apiService.getProducts(sellerId: sellerId);
-      } else {
-        result = await _apiService.getProducts();
-      }
-      
-      _products = result.map((item) {
-        final product = item as Map<String, dynamic>;
-        return {
-          ...product,
-          'price': product['price'] is String 
-              ? double.tryParse(product['price']) ?? 0.0 
-              : (product['price'] as num).toDouble(),
-          'stock': product['stock'] is String 
-              ? int.tryParse(product['stock']) ?? 0 
-              : (product['stock'] as int),
-        };
-      }).toList();
-      
+      final result = await _apiService.getMyProducts();
+      _products = result.cast<Map<String, dynamic>>();
     } catch (e) {
-      print('Error loading products: $e');
+      debugPrint('Error loading products: $e');
       _products = [];
     }
-    
+
     setState(() => _isLoading = false);
   }
 
@@ -368,17 +343,14 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                         imageUrl = url;
                       }
                     }
-                    
-                    final authService = Provider.of<AuthService>(context, listen: false);
-                    
+
                     final result = await _apiService.createProduct({
-                      'seller_id': authService.currentUser?.id ?? '1',
-                      'name': nameController.text,
-                      'description': descriptionController.text,
-                      'price': double.parse(priceController.text),
-                      'stock': int.parse(stockController.text),
-                      'category': categoryController.text,
-                      'image': imageUrl,
+                      'nama_barang': nameController.text,
+                      'deskripsi': descriptionController.text,
+                      'harga': double.parse(priceController.text),
+                      'stok': int.parse(stockController.text),
+                      'kategori': categoryController.text,
+                      'gambar': imageUrl,
                       'is_published': isPublished,
                     });
                     
@@ -407,8 +379,8 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
   }
 
   void _showEditStockDialog(Map<String, dynamic> product) {
-    final stockController = TextEditingController(text: product['stock'].toString());
-    
+    final stockController = TextEditingController(text: product['stok'].toString());
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -416,7 +388,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Produk: ${product['name']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text('Produk: ${product['nama_barang']}', style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             TextField(
               controller: stockController,
@@ -436,12 +408,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
           ElevatedButton(
             onPressed: () async {
               final newStock = int.tryParse(stockController.text) ?? 0;
-              
+
               final result = await _apiService.updateProduct(
                 product['id'],
-                {'stock': newStock}
+                {'stok': newStock}
               );
-              
+
               if (result['success'] == true) {
                 await _loadProducts();
                 if (mounted) {
@@ -459,9 +431,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     );
   }
 
+  bool _isPublished(Map<String, dynamic> product) =>
+      product['is_published'] == true || product['is_published'] == 1;
+
   Future<void> _toggleProductStatus(Map<String, dynamic> product) async {
-    final newStatus = !product['is_published'];
-    
+    final newStatus = !_isPublished(product);
+
     final result = await _apiService.updateProduct(
       product['id'],
       {'is_published': newStatus}
@@ -567,14 +542,14 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              _buildProductImage(product['image'], width: 80, height: 80),
+                              _buildProductImage(product['gambar'], width: 80, height: 80),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      product['name'],
+                                      product['nama_barang'] ?? '',
                                       style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -582,7 +557,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      'Rp ${_formatNumber(product['price'])}',
+                                      'Rp ${_formatNumber(product['harga'])}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -599,7 +574,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                                             borderRadius: BorderRadius.circular(20),
                                           ),
                                           child: Text(
-                                            'Stok: ${product['stock']}',
+                                            'Stok: ${product['stok']}',
                                             style: TextStyle(
                                               fontSize: 11,
                                               color: Colors.grey.shade700,
@@ -612,16 +587,16 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                                           child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                             decoration: BoxDecoration(
-                                              color: product['is_published'] == true
+                                              color: _isPublished(product)
                                                   ? Colors.green.shade100
                                                   : Colors.grey.shade200,
                                               borderRadius: BorderRadius.circular(20),
                                             ),
                                             child: Text(
-                                              product['is_published'] == true ? 'Terbit' : 'Draft',
+                                              _isPublished(product) ? 'Terbit' : 'Draft',
                                               style: TextStyle(
                                                 fontSize: 10,
-                                                color: product['is_published'] == true
+                                                color: _isPublished(product)
                                                     ? Colors.green.shade700
                                                     : Colors.grey.shade700,
                                               ),
@@ -639,7 +614,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                                   if (value == 'edit_stock') {
                                     _showEditStockDialog(product);
                                   } else if (value == 'delete') {
-                                    _deleteProduct(product['id'], product['name']);
+                                    _deleteProduct(product['id'].toString(), product['nama_barang'] ?? '');
                                   }
                                 },
                                 itemBuilder: (context) => [
