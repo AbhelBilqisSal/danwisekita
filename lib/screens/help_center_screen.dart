@@ -9,17 +9,25 @@ class HelpCenterScreen extends StatelessWidget {
   // Daftar kontak (contoh statis). Anda dapat menggantinya dengan data dinamis nanti.
   static const List<_Contact> _contacts = [
     _Contact(
-      name: 'Budi Santoso',
+      name: 'Alaudin Maliqulsaleh',
       role: 'Manajer Operasional',
-      phone: '+6281234567890',
-      email: 'budi@danwise.id',
-      // Anda dapat menambahkan link WhatsApp, Telegram, atau URL lainnya.
+      phone: '+6285254282622',
+      email: 'alaudin@danwise.id',
+      whatsappUrl: 'https://wa.me/6285254282622?text=Halo%20Admin',
     ),
     _Contact(
-      name: 'Siti Hartono',
-      role: 'Customer Support',
-      phone: '+6281122334455',
-      email: 'support@danwise.id',
+      name: 'Abhel Bilqis Salsabila',
+      role: 'Manajer Operasional',
+      phone: '+6285748583849',
+      email: 'Bilqis@danwise.id',
+      whatsappUrl: 'https://wa.me/6285748583849?text=Halo%20Admin',
+    ),
+    _Contact(
+      name: 'Muhammad Fikri',
+      role: 'Manajer Operasional',
+      phone: '+628131013467',
+      email: 'Fikri@danwise.id',
+      whatsappUrl: 'https://wa.me/628131013467?text=Halo%20Admin',
     ),
   ];
 
@@ -67,10 +75,17 @@ class HelpCenterScreen extends StatelessWidget {
               onSelected: (action) async {
                 switch (action) {
                   case _ContactAction.call:
-                    await _launch('tel:${contact.phone}');
-                    break;
+                      await _launch('tel:${contact.phone}');
+                      break;
                   case _ContactAction.email:
                     await _launch('mailto:${contact.email}');
+                    break;
+                  case _ContactAction.whatsapp:
+                    // Use custom URL if provided, otherwise fallback to phone number
+                    final url = contact.whatsappUrl ??
+                        'https://wa.me/' +
+                            contact.phone.replaceAll('+', '').replaceAll(' ', '');
+                    await _launch(url);
                     break;
                 }
               },
@@ -89,7 +104,14 @@ class HelpCenterScreen extends StatelessWidget {
                     title: Text('Hubungi via Email'),
                   ),
                 ),
-              ],
+                            const PopupMenuItem(
+                value: _ContactAction.whatsapp,
+                child: ListTile(
+                  leading: Icon(Icons.chat),
+                  title: Text('Hubungi via WhatsApp'),
+                ),
+              ),
+            ],
             ),
           );
         },
@@ -100,18 +122,20 @@ class HelpCenterScreen extends StatelessWidget {
 
 // -----------------------------------------------------------------------------
 // Helper classes / enums (private)
-enum _ContactAction { call, email }
+enum _ContactAction { call, email, whatsapp }
 
 class _Contact {
   final String name;
   final String role;
   final String phone;
   final String email;
+  final String? whatsappUrl; // optional custom WhatsApp link
 
   const _Contact({
     required this.name,
     required this.role,
     required this.phone,
     required this.email,
+    this.whatsappUrl,
   });
 }
