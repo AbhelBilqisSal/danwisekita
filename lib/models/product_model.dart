@@ -15,6 +15,7 @@ class ProductModel {
   final bool isPublished;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final Map<String, dynamic>? toko;
 
   ProductModel({
     required this.id,
@@ -29,6 +30,7 @@ class ProductModel {
     this.isPublished = true,
     this.createdAt,
     this.updatedAt,
+    this.toko,
   });
 
   /// Parse dari JSON response backend (snake_case).
@@ -53,6 +55,7 @@ class ProductModel {
           json['isPublished'] == true,
       createdAt: _parseDateTime(json['created_at'] ?? json['createdAt']),
       updatedAt: _parseDateTime(json['updated_at'] ?? json['updatedAt']),
+      toko: json['toko'] != null ? Map<String, dynamic>.from(json['toko'] as Map) : null,
     );
   }
 
@@ -69,6 +72,7 @@ class ProductModel {
       'gambar': mainImage ?? '',
       'images': images ?? '',
       'is_published': isPublished ? 1 : 0,
+      'toko': toko,
     };
   }
 

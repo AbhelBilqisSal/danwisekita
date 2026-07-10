@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../utils/constants.dart';
 import 'order_processing.dart';
 import 'product_management.dart';
 import 'profile_screen.dart';
@@ -23,10 +27,147 @@ class _SellerDashboardState extends State<SellerDashboard> {
   bool _isLoading = true;
   bool _showMap = false;
 
+  final MapController _mapController = MapController();
+  final LatLng _defaultLocation = const LatLng(-6.9748, 107.6305); // Telkom University
+  LatLng? _sellerLocation;
+
   @override
   void initState() {
     super.initState();
+    final authService = Provider.of<AuthService>(context, listen: false);
+    _showMap = (authService.currentUser?.mapActive ?? 1) == 1;
+    if (authService.currentUser?.latitude != null && authService.currentUser?.longitude != null) {
+      _sellerLocation = LatLng(authService.currentUser!.latitude!, authService.currentUser!.longitude!);
+    }
     _loadData();
+    if (_showMap) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _initActiveLocation();
+      });
+    }
+  }
+
+  Future<Position?> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    try {
+      serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return null;
+      }
+
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          return null;
+        }
+      }
+      
+      if (permission == LocationPermission.deniedForever) {
+        return null;
+      } 
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      debugPrint('Error determining location: $e');
+      return null;
+    }
+  }
+
+  Future<void> _toggleMap(bool active) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
+    if (active) {
+      final position = await _determinePosition();
+      LatLng locationToSave;
+      
+      if (position != null) {
+        double lat = position.latitude;
+        double lng = position.longitude;
+        
+        // Snap to Telkom University if too far (e.g. emulator default location in California)
+        if ((lat - -6.9748).abs() > 0.2 || (lng - 107.6305).abs() > 0.2) {
+          final seed = int.tryParse(authService.currentUser?.id ?? '0') ?? 0;
+          lat = -6.9748 + ((seed % 10) - 5) * 0.0003;
+          lng = 107.6305 + (((seed * 3) % 10) - 5) * 0.0003;
+        }
+        
+        locationToSave = LatLng(lat, lng);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ Lokasi GPS didapatkan (Disesuaikan ke Telkom University)')),
+          );
+        }
+      } else {
+        locationToSave = _defaultLocation;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Izin lokasi ditolak, menggunakan lokasi default (Telkom University)')),
+          );
+        }
+      }
+      
+      setState(() {
+        _sellerLocation = locationToSave;
+        _showMap = true;
+      });
+      
+      await authService.updateProfile({
+        'map_active': '1',
+        'latitude': locationToSave.latitude.toString(),
+        'longitude': locationToSave.longitude.toString(),
+      });
+      
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _mapController.move(locationToSave, 15.0);
+      });
+      
+    } else {
+      setState(() {
+        _showMap = false;
+      });
+      
+      await authService.updateProfile({
+        'map_active': '0',
+      });
+    }
+  }
+
+  Future<void> _initActiveLocation() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if ((authService.currentUser?.mapActive ?? 1) == 1) {
+      final position = await _determinePosition();
+      if (position != null) {
+        double lat = position.latitude;
+        double lng = position.longitude;
+        
+        // Snap to Telkom University if too far (e.g. emulator default location in California)
+        if ((lat - -6.9748).abs() > 0.2 || (lng - 107.6305).abs() > 0.2) {
+          final seed = int.tryParse(authService.currentUser?.id ?? '0') ?? 0;
+          lat = -6.9748 + ((seed % 10) - 5) * 0.0003;
+          lng = 107.6305 + (((seed * 3) % 10) - 5) * 0.0003;
+        }
+        
+        final locationToSave = LatLng(lat, lng);
+        if (mounted) {
+          setState(() {
+            _sellerLocation = locationToSave;
+          });
+          _mapController.move(locationToSave, 15.0);
+        }
+        
+        await authService.updateProfile({
+          'map_active': '1',
+          'latitude': locationToSave.latitude.toString(),
+          'longitude': locationToSave.longitude.toString(),
+        });
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -67,22 +208,16 @@ class _SellerDashboardState extends State<SellerDashboard> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 shape: BoxShape.circle,
+                image: const DecorationImage(
+                  image: AssetImage('assets/logo/danwise_logo.jpg'),
+                  fit: BoxFit.cover,
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 5,
                   ),
                 ],
-              ),
-              child: const Center(
-                child: Text(
-                  'D',
-                  style: TextStyle(
-                    color: Color(0xFFDC2626),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -203,16 +338,53 @@ class _SellerDashboardState extends State<SellerDashboard> {
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: Text(
-                      authService.currentUser?.name[0].toUpperCase() ?? 'P',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFDC2626),
-                      ),
-                    ),
-                  ),
+                  child: authService.currentUser?.profilePicture != null &&
+                          authService.currentUser!.profilePicture!.isNotEmpty
+                      ? ClipOval(
+                          child: Image.network(
+                            AppConstants.getImageUrl(authService.currentUser!.profilePicture),
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Text(
+                                authService.currentUser?.name.isNotEmpty == true
+                                    ? authService.currentUser!.name[0].toUpperCase()
+                                    : 'P',
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFDC2626),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Center(
+                          child: Text(
+                            authService.currentUser?.name.isNotEmpty == true
+                                ? authService.currentUser!.name[0].toUpperCase()
+                                : 'P',
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFFDC2626),
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -369,9 +541,7 @@ class _SellerDashboardState extends State<SellerDashboard> {
                   Switch(
                     value: _showMap,
                     onChanged: (value) {
-                      setState(() {
-                        _showMap = value;
-                      });
+                      _toggleMap(value);
                     },
                     activeColor: const Color(0xFFDC2626),
                   ),
@@ -392,128 +562,58 @@ class _SellerDashboardState extends State<SellerDashboard> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
-                child: Stack(
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _sellerLocation ??
+                        LatLng(
+                          double.tryParse(authService.currentUser?.latitude?.toString() ?? '') ?? _defaultLocation.latitude,
+                          double.tryParse(authService.currentUser?.longitude?.toString() ?? '') ?? _defaultLocation.longitude,
+                        ),
+                    initialZoom: 15.0,
+                  ),
                   children: [
-                    Positioned.fill(
-                      child: CustomPaint(
-                        painter: SellerMapPainter(storeName: authService.currentUser?.storeName ?? 'Toko Anda'),
-                      ),
+                    TileLayer(
+                      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      subdomains: const ['a', 'b', 'c'],
+                      userAgentPackageName: 'com.example.danwise',
                     ),
-                    // Toko Anda (Center)
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.store, color: Color(0xFFDC2626), size: 32),
-                          const SizedBox(height: 2),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 2)],
-                            ),
-                            child: Text(
-                              authService.currentUser?.storeName ?? 'Toko Anda',
-                              style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
-                            ),
+                    MarkerLayer(
+                      markers: [
+                        // Marker Toko Anda (Merah)
+                        Marker(
+                          point: _sellerLocation ??
+                              LatLng(
+                                double.tryParse(authService.currentUser?.latitude?.toString() ?? '') ?? _defaultLocation.latitude,
+                                double.tryParse(authService.currentUser?.longitude?.toString() ?? '') ?? _defaultLocation.longitude,
+                              ),
+                          width: 80,
+                          height: 80,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.store, color: Color(0xFFDC2626), size: 30),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(4),
+                                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+                                ),
+                                child: Text(
+                                  authService.currentUser?.storeName ?? 'Toko Anda',
+                                  style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Color(0xFFDC2626)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    // Buyer 1 (Asrama Telkom - Top Right)
-                    Positioned(
-                      right: 60,
-                      top: 40,
-                      child: Column(
-                        children: [
-                          const Icon(Icons.person_pin, color: Colors.blue, size: 28),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 1)],
-                            ),
-                            child: const Text('Budi (Asrama)', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Buyer 2 (Gedung FIT - Bottom Left)
-                    Positioned(
-                      left: 50,
-                      bottom: 40,
-                      child: Column(
-                        children: [
-                          const Icon(Icons.person_pin, color: Colors.blue, size: 28),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 1)],
-                            ),
-                            child: const Text('Siti (FIT)', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Buyer 3 (Kost Sukabirus - Top Left)
-                    Positioned(
-                      left: 40,
-                      top: 40,
-                      child: Column(
-                        children: [
-                          const Icon(Icons.person_pin, color: Colors.blue, size: 28),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 1)],
-                            ),
-                            child: const Text('Rian (Sukabirus)', style: TextStyle(fontSize: 7, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDC2626).withOpacity(0.05),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFDC2626).withOpacity(0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.people, color: Color(0xFFDC2626), size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Pembeli Aktif Terdekat (Telkom University)',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFDC2626),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildActiveBuyerRow('Budi (Asrama Putra Telkom)', 'Jarak: 300m', 'Status: Aktif Memesan'),
-                  const Divider(height: 16),
-                  _buildActiveBuyerRow('Siti (Gedung FIT Kampus)', 'Jarak: 500m', 'Status: Aktif Memesan'),
-                  const Divider(height: 16),
-                  _buildActiveBuyerRow('Rian (Kost Sukabirus)', 'Jarak: 200m', 'Status: Aktif Keranjang'),
-                ],
               ),
             ),
           ] else
@@ -574,45 +674,6 @@ class _SellerDashboardState extends State<SellerDashboard> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildActiveBuyerRow(String name, String distance, String status) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                status,
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFDC2626).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            distance,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFFDC2626),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
     );
   }
 

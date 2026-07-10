@@ -16,7 +16,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'qris';
   bool _isLoading = false;
 
-  final double _shippingCost = 10000;
+  final double _shippingCost = 0;
 
   final List<Map<String, dynamic>> _paymentMethods = [
     {
@@ -73,7 +73,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           MaterialPageRoute(
             builder: (context) => QrisPaymentScreen(
               orderId: firstOrderId!,
-              amount: cartProvider.subtotal + _shippingCost,
+              amount: cartProvider.subtotal,
               sellerId: '',
             ),
           ),

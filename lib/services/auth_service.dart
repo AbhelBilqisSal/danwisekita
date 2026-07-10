@@ -224,6 +224,15 @@ class AuthService extends ChangeNotifier {
               _currentUser!.profilePicture,
           qrisImage: profileData['qris_image']?.toString() ??
               _currentUser!.qrisImage,
+          mapActive: profileData['map_active'] != null
+              ? int.tryParse(profileData['map_active'].toString())
+              : _currentUser!.mapActive,
+          latitude: profileData['latitude'] != null
+              ? double.tryParse(profileData['latitude'].toString())
+              : _currentUser!.latitude,
+          longitude: profileData['longitude'] != null
+              ? double.tryParse(profileData['longitude'].toString())
+              : _currentUser!.longitude,
         );
 
         await _persistUserData();

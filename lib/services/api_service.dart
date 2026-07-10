@@ -23,7 +23,7 @@ import 'seller_service.dart';
 /// Secara internal, class ini mendelegasikan ke service-service
 /// tersebut di atas.
 class ApiService {
-  static const String baseUrl = AppConstants.baseUrl;
+  static final String baseUrl = AppConstants.baseUrl;
 
   final ApiClient _client = ApiClient();
   final ProductService _productService = ProductService();
@@ -378,7 +378,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> sendMessage(String senderId, String receiverId, String message) async {
+  Future<Map<String, dynamic>> sendMessage(String senderId, String receiverId, String message, {String? image}) async {
     try {
       return await _client.post(
         'chat/send',
@@ -386,6 +386,7 @@ class ApiService {
           'sender_id': senderId,
           'receiver_id': receiverId,
           'message': message,
+          'image': image,
         },
       );
     } on ApiException catch (e) {

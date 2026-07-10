@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
+import '../utils/constants.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final String userName;
@@ -92,7 +93,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Profil berhasil diperbarui')),
+        const SnackBar(content: Text(' Profil berhasil diperbarui')),
       );
       Navigator.pop(context, true);
     } else if (mounted) {
@@ -124,12 +125,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     
     if (widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty) {
-      String imageUrl = widget.profileImageUrl!;
-      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:image')) {
-        imageUrl = 'http://localhost:8000/api/index.php?path=uploads&file=' + imageUrl;
-      } else if (imageUrl.startsWith('http://localhost:8000/uploads/')) {
-        imageUrl = imageUrl.replaceFirst('http://localhost:8000/uploads/', 'http://localhost:8000/api/index.php?path=uploads&file=uploads/');
-      }
+      String imageUrl = AppConstants.getImageUrl(widget.profileImageUrl);
       return ClipOval(
         child: Image.network(
           imageUrl,

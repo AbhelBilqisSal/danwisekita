@@ -13,6 +13,9 @@ class UserModel {
   final String? qrisImage;
   final String status;
   final String? komunitasId;
+  final int mapActive; // 1 = active, 0 = inactive
+  final double? latitude;
+  final double? longitude;
 
   UserModel({
     required this.id,
@@ -25,6 +28,9 @@ class UserModel {
     this.qrisImage,
     this.status = 'approved',
     this.komunitasId,
+    this.mapActive = 1,
+    this.latitude,
+    this.longitude,
   });
 
   /// Parse dari JSON backend (snake_case) atau dari local storage (camelCase).
@@ -43,6 +49,18 @@ class UserModel {
           json['qris_image']?.toString() ?? json['qrisImage']?.toString(),
       status: json['status']?.toString() ?? 'approved',
       komunitasId: json['komunitas_id']?.toString() ?? json['komunitasId']?.toString(),
+      mapActive: json['map_active'] is int
+          ? json['map_active']
+          : (int.tryParse(json['map_active']?.toString() ?? '') ??
+              (json['mapActive'] is int
+                  ? json['mapActive']
+                  : (int.tryParse(json['mapActive']?.toString() ?? '') ?? 1))),
+      latitude: json['latitude'] is num
+          ? (json['latitude'] as num).toDouble()
+          : double.tryParse(json['latitude']?.toString() ?? ''),
+      longitude: json['longitude'] is num
+          ? (json['longitude'] as num).toDouble()
+          : double.tryParse(json['longitude']?.toString() ?? ''),
     );
   }
 
@@ -59,6 +77,9 @@ class UserModel {
       'qrisImage': qrisImage,
       'status': status,
       'komunitasId': komunitasId,
+      'mapActive': mapActive,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -74,6 +95,9 @@ class UserModel {
     String? qrisImage,
     String? status,
     String? komunitasId,
+    int? mapActive,
+    double? latitude,
+    double? longitude,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -86,6 +110,9 @@ class UserModel {
       qrisImage: qrisImage ?? this.qrisImage,
       status: status ?? this.status,
       komunitasId: komunitasId ?? this.komunitasId,
+      mapActive: mapActive ?? this.mapActive,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 

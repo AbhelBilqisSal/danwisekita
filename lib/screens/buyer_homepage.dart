@@ -9,6 +9,8 @@ import 'transaction_history.dart';
 import 'product_details.dart';
 import 'store_screen.dart';
 import 'chat_list_screen.dart';
+import 'map_screen.dart';
+
 
 class BuyerHomepage extends StatefulWidget {
   const BuyerHomepage({super.key});
@@ -48,6 +50,14 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
     _nearbySellers = await _apiService.getNearbySellers(-6.978, 107.630);
     _allProducts = await _apiService.getProducts();
     setState(() => _isLoading = false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Berhasil memuat ${_nearbySellers.length} penjual terdekat'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   List<dynamic> get _filteredProducts {
@@ -227,6 +237,7 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
 
     final screens = [
       _buildHomeScreen(authService),
+      const MapScreen(),
       const TransactionHistoryScreen(),
       const ProfileScreen(),
     ];
@@ -246,22 +257,16 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      image: const DecorationImage(
+                        image: AssetImage('assets/logo/danwise_logo.jpg'),
+                        fit: BoxFit.cover,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
                           blurRadius: 4,
                         ),
                       ],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'D',
-                        style: TextStyle(
-                          color: Color(0xFFDC2626),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -383,6 +388,11 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
               label: 'Beranda',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.map_outlined),
+              activeIcon: Icon(Icons.map),
+              label: 'Peta Toko',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.receipt_outlined),
               activeIcon: Icon(Icons.receipt),
               label: 'Transaksi',
@@ -450,204 +460,7 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
               ),
             ),
 
-            // Categories
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 0, 8),
-              child: SizedBox(
-                height: 38,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _categories.length,
-                  itemBuilder: (context, index) {
-                    final category = _categories[index];
-                    final isSelected = _selectedCategory == category;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFFDC2626)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: isSelected
-                                  ? const Color(0xFFDC2626)
-                                  : Colors.grey.shade300,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: const Color(0xFFDC2626)
-                                          .withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ]
-                                : [],
-                          ),
-                          child: Text(
-                            category,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
 
-            // Promo Banner
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Container(
-                height: 130,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFFDC2626),
-                      Color(0xFFEF4444),
-                      Color(0xFFF87171)
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFDC2626).withOpacity(0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -20,
-                      top: -20,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 20,
-                      bottom: -10,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.08),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  'Diskon Spesial! 🎉',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Dapatkan diskon hingga 50%\nuntuk pembelian pertama',
-                                  style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 13,
-                                      height: 1.4),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.local_offer,
-                              color: Colors.white, size: 50),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Penjual Populer Section
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Penjual Populer',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text(
-                      'Lihat Semua',
-                      style: TextStyle(color: Color(0xFFDC2626), fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 110,
-              child: _nearbySellers.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Belum ada penjual',
-                        style: TextStyle(
-                            color: Colors.grey.shade400, fontSize: 13),
-                      ),
-                    )
-                  : ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: _nearbySellers.length,
-                      itemBuilder: (context, index) {
-                        final seller = _nearbySellers[index];
-                        return _buildSellerCircleCard(seller);
-                      },
-                    ),
-            ),
 
             // Produk Populer
             Padding(
@@ -656,7 +469,7 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Produk Populer',
+                    'Produk',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -784,6 +597,10 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
     );
   }
 
+  String _profileImageUrl(String? imageUrl) {
+    return AppConstants.getImageUrl(imageUrl);
+  }
+
   // Circular seller avatar card for horizontal scroll
   Widget _buildSellerCircleCard(dynamic seller) {
     return GestureDetector(
@@ -887,16 +704,32 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.store, color: Colors.white, size: 26),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: (seller['profile_picture'] ?? seller['user']?['profile_picture']) != null &&
+                        (seller['profile_picture'] ?? seller['user']?['profile_picture']).toString().isNotEmpty
+                    ? Image.network(
+                        _profileImageUrl(seller['profile_picture'] ?? seller['user']?['profile_picture']),
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 50,
+                          height: 50,
+                          color: const Color(0xFFDC2626),
+                          child: const Icon(Icons.store, color: Colors.white, size: 26),
+                        ),
+                      )
+                    : Container(
+                        width: 50,
+                        height: 50,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFDC2626), Color(0xFFEF4444)],
+                          ),
+                        ),
+                        child: const Icon(Icons.store, color: Colors.white, size: 26),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(

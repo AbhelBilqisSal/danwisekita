@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../utils/constants.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final String otherUserId;
@@ -139,6 +141,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Gagal mengirim pesan'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendImage() async {
+    if (_isSending) return;
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (pickedFile == null) return;
+
+    setState(() => _isSending = true);
+    
+    // Upload image
+    final imageUrl = await _apiService.uploadImage(pickedFile);
+    if (imageUrl == null || imageUrl.isEmpty) {
+      setState(() => _isSending = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal mengunggah gambar'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Optimistic update
+    final optimisticMsg = {
+      'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      'sender_id': _currentUserId,
+      'receiver_id': widget.otherUserId,
+      'message': '',
+      'image': imageUrl,
+      'is_read': '0',
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    setState(() {
+      _messages.add(optimisticMsg);
+    });
+    _scrollToBottom();
+
+    final result = await _apiService.sendMessage(
+      _currentUserId,
+      widget.otherUserId,
+      '',
+      image: imageUrl,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSending = false);
+
+    if (result['success'] != true) {
+      setState(() {
+        _messages.removeWhere((m) => m['id'] == optimisticMsg['id']);
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Gagal mengirim gambar'),
             backgroundColor: Colors.red,
           ),
         );
@@ -374,30 +440,83 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Flexible(
-                    child: Text(
-                      text,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isMe ? Colors.white : const Color(0xFF1A1A2E),
-                        height: 1.3,
+                  if (message['image'] != null && message['image'].toString().isNotEmpty) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        AppConstants.sanitizeImageUrl(message['image'].toString()),
+                        width: 200,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 200,
+                            height: 150,
+                            color: Colors.grey.shade100,
+                            child: const Center(
+                              child: CircularProgressIndicator(color: Color(0xFFDC2626)),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 200,
+                          height: 120,
+                          color: Colors.grey.shade200,
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.broken_image, color: Colors.grey),
+                              SizedBox(height: 4),
+                              Text('Gagal memuat gambar', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  if (isMe) ...[
-                    const SizedBox(width: 6),
-                    Icon(
-                      isRead ? Icons.done_all : Icons.done,
-                      size: 14,
-                      color: isRead
-                          ? Colors.white.withOpacity(0.9)
-                          : Colors.white.withOpacity(0.5),
-                    ),
+                    if (text.isNotEmpty) const SizedBox(height: 8),
                   ],
+                  if (text.isNotEmpty)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            text,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isMe ? Colors.white : const Color(0xFF1A1A2E),
+                              height: 1.3,
+                            ),
+                          ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            isRead ? Icons.done_all : Icons.done,
+                            size: 14,
+                            color: isRead
+                                ? Colors.white.withOpacity(0.9)
+                                : Colors.white.withOpacity(0.5),
+                          ),
+                        ],
+                      ],
+                    )
+                  else if (isMe)
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Icon(
+                        isRead ? Icons.done_all : Icons.done,
+                        size: 14,
+                        color: isRead
+                            ? Colors.red.shade100
+                            : Colors.grey.shade400,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -435,6 +554,19 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       ),
       child: Row(
         children: [
+          // Camera Button
+          GestureDetector(
+            onTap: _sendImage,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(right: 4),
+              child: const Icon(
+                Icons.image,
+                color: Color(0xFFDC2626),
+                size: 24,
+              ),
+            ),
+          ),
           // Text field
           Expanded(
             child: Container(

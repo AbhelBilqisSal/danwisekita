@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../utils/constants.dart';
 import 'edit_profile.dart';
 import 'welcome_screen.dart';
 import 'payment_method_screen.dart';
-
+import 'help_center_screen.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -270,10 +271,11 @@ class ProfileScreen extends StatelessWidget {
                       title: 'Pusat Bantuan',
                       subtitle: 'FAQ dan bantuan',
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text(
-                                  'Fitur pusat bantuan akan segera hadir')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HelpCenterScreen(),
+                          ),
                         );
                       },
                     ),
@@ -403,14 +405,7 @@ class ProfileScreen extends StatelessWidget {
 
   Widget _buildProfileImage(String? imageUrl, String name) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      String fullImageUrl = imageUrl;
-      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:image')) {
-        fullImageUrl =
-            'http://localhost:8000/api/index.php?path=uploads&file=' + imageUrl;
-      } else if (imageUrl.startsWith('http://localhost:8000/uploads/')) {
-        fullImageUrl = imageUrl.replaceFirst('http://localhost:8000/uploads/',
-            'http://localhost:8000/api/index.php?path=uploads&file=uploads/');
-      }
+      String fullImageUrl = AppConstants.getImageUrl(imageUrl);
       return ClipOval(
         child: Image.network(
           fullImageUrl,

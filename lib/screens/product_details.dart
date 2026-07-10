@@ -108,6 +108,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    print('DEBUG PRODUCT MAP: $product');
     final cartProvider = Provider.of<CartProvider>(context);
     final isInCart = cartProvider.isInCart(_getString(product['id']));
     final cartQuantity = cartProvider.getQuantity(_getString(product['id']));
@@ -120,6 +121,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     final description = _getString(product['deskripsi']);
     final category = _getString(product['kategori']);
     final sellerId = _getString(product['toko_id']);
+    final sellerUserId = product['toko'] != null && product['toko']['user_id'] != null
+        ? _getString(product['toko']['user_id'])
+        : _getString(product['toko_id']);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -338,9 +342,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Toko Official',
-                                  style: TextStyle(
+                                Text(
+                                  product['toko'] != null
+                                      ? _getString(product['toko']['nama_toko'])
+                                      : 'Toko Official',
+                                  style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14),
                                 ),
@@ -357,7 +363,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      'Online • Telkom University',
+                                      product['toko'] != null
+                                          ? 'Online • ${_getString(product['toko']['lokasi'])}'
+                                          : 'Online • Telkom University',
                                       style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey.shade500),
@@ -369,21 +377,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ),
                           OutlinedButton(
                             onPressed: () {
-                              if (sellerId.isEmpty) {
+                              if (sellerUserId.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('ID toko tidak valid')),
+                                  const SnackBar(content: Text('ID penjual tidak valid')),
                                 );
                                 return;
                               }
-                              final storeName = widget.product['toko_name'] ?? 
-                                  widget.product['seller_name'] ?? 
-                                  'Toko Official';
+                              final storeName = product['toko'] != null
+                                  ? _getString(product['toko']['nama_toko'])
+                                  : 'Toko Official';
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatDetailScreen(
-                                    otherUserId: sellerId,
-                                    otherUserName: storeName.toString(),
+                                    otherUserId: sellerUserId,
+                                    otherUserName: storeName,
                                   ),
                                 ),
                               );
@@ -590,7 +598,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         imageUrl: images.isNotEmpty ? images[0] : '',
                         quantity: _quantity,
                         sellerId: sellerId,
-                        sellerName: 'Toko Official',
+                        sellerName: product['toko'] != null
+                            ? _getString(product['toko']['nama_toko'])
+                            : 'Toko Official',
                         stock: productStock,
                       );
 
