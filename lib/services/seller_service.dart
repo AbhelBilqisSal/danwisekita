@@ -60,6 +60,7 @@ class SellerService {
       final result = await _client.post(
         'seller/qris',
         body: {'qris_image': base64Image},
+        extraHeaders: {'User-Id': userId},
         timeout: const Duration(seconds: 30),
       );
 
@@ -95,6 +96,7 @@ class SellerService {
       final result = await _client.post(
         'upload',
         body: {'image': base64Image},
+        extraHeaders: {'User-Id': userId},
         timeout: const Duration(seconds: 30),
       );
 

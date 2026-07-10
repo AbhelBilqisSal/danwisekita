@@ -134,6 +134,20 @@ switch ($path) {
     case 'sellers/nearby':
         if ($method == 'GET') $response = handleGetNearbySellers($db, $queryParams);
         break;
+    
+    // CHAT
+    case 'chat/conversations':
+        if ($method == 'GET') $response = handleGetConversations($db, $queryParams);
+        break;
+    case 'chat/messages':
+        if ($method == 'GET') $response = handleGetMessages($db, $queryParams);
+        break;
+    case 'chat/send':
+        if ($method == 'POST') $response = handleSendMessage($db, $input);
+        break;
+    case 'chat/read':
+        if ($method == 'PUT') $response = handleMarkAsRead($db, $input);
+        break;
         
     default:
         $response = ['success' => false, 'message' => "Endpoint not found: path='$path'"];
@@ -815,7 +829,9 @@ function handleUploadImage($db) {
                 $stmt = $db->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
                 $stmt->execute([$url, $userId]);
                 
-                $fullUrl = 'http://localhost:8000/api/index.php?path=uploads&file=' . $url;
+                $httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $fullUrl = "$protocol://$httpHost/api/index.php?path=uploads&file=" . $url;
                 
                 echo json_encode([
                     'success' => true,
@@ -846,7 +862,9 @@ function handleUploadImage($db) {
                 $stmt = $db->prepare("UPDATE users SET profile_picture = ? WHERE id = ?");
                 $stmt->execute([$url, $userId]);
                 
-                $fullUrl = 'http://localhost:8000/api/index.php?path=uploads&file=' . $url;
+                $httpHost = $_SERVER['HTTP_HOST'] ?? 'localhost:8000';
+                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $fullUrl = "$protocol://$httpHost/api/index.php?path=uploads&file=" . $url;
                 
                 echo json_encode([
                     'success' => true,
@@ -944,6 +962,147 @@ function handleGetNearbySellers($db, $params) {
         ];
         
         echo json_encode(['success' => true, 'data' => $sellers]);
+        exit;
+    } catch(PDOException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
+// ==================== CHAT ====================
+
+function handleGetConversations($db, $params) {
+    try {
+        $userId = $params['user_id'] ?? null;
+        if (!$userId) {
+            echo json_encode(['success' => false, 'message' => 'User ID required']);
+            exit;
+        }
+        
+        $sql = "SELECT 
+                    CASE 
+                        WHEN m.sender_id = ? THEN m.receiver_id 
+                        ELSE m.sender_id 
+                    END as other_user_id,
+                    u.name as other_user_name,
+                    u.role as other_user_role,
+                    u.profile_picture as other_user_avatar,
+                    u.store_name as other_user_store,
+                    m.message as last_message,
+                    m.created_at as last_message_time,
+                    m.sender_id as last_sender_id,
+                    (
+                        SELECT COUNT(*) FROM messages 
+                        WHERE sender_id = other_user_id 
+                        AND receiver_id = ? 
+                        AND is_read = 0
+                    ) as unread_count
+                FROM messages m
+                JOIN users u ON u.id = CASE 
+                    WHEN m.sender_id = ? THEN m.receiver_id 
+                    ELSE m.sender_id 
+                END
+                WHERE m.id IN (
+                    SELECT MAX(id) FROM messages 
+                    WHERE sender_id = ? OR receiver_id = ?
+                    GROUP BY CASE 
+                        WHEN sender_id = ? THEN receiver_id 
+                        ELSE sender_id 
+                    END
+                )
+                ORDER BY m.created_at DESC";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$userId, $userId, $userId, $userId, $userId, $userId]);
+        $conversations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'data' => $conversations]);
+        exit;
+    } catch(PDOException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
+function handleGetMessages($db, $params) {
+    try {
+        $userId = $params['user_id'] ?? null;
+        $otherUserId = $params['other_user_id'] ?? null;
+        
+        if (!$userId || !$otherUserId) {
+            echo json_encode(['success' => false, 'message' => 'Both user IDs required']);
+            exit;
+        }
+        
+        $sql = "SELECT m.*, 
+                    sender.name as sender_name,
+                    receiver.name as receiver_name
+                FROM messages m
+                JOIN users sender ON m.sender_id = sender.id
+                JOIN users receiver ON m.receiver_id = receiver.id
+                WHERE (m.sender_id = ? AND m.receiver_id = ?)
+                   OR (m.sender_id = ? AND m.receiver_id = ?)
+                ORDER BY m.created_at ASC";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$userId, $otherUserId, $otherUserId, $userId]);
+        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'data' => $messages]);
+        exit;
+    } catch(PDOException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
+function handleSendMessage($db, $input) {
+    try {
+        $senderId = $input['sender_id'] ?? null;
+        $receiverId = $input['receiver_id'] ?? null;
+        $message = $input['message'] ?? null;
+        
+        if (!$senderId || !$receiverId || !$message) {
+            echo json_encode(['success' => false, 'message' => 'Missing required fields']);
+            exit;
+        }
+        
+        $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, message) VALUES (?, ?, ?)");
+        $stmt->execute([$senderId, $receiverId, trim($message)]);
+        
+        $messageId = $db->lastInsertId();
+        
+        // Fetch the inserted message
+        $stmt = $db->prepare("SELECT m.*, sender.name as sender_name, receiver.name as receiver_name 
+                              FROM messages m 
+                              JOIN users sender ON m.sender_id = sender.id 
+                              JOIN users receiver ON m.receiver_id = receiver.id 
+                              WHERE m.id = ?");
+        $stmt->execute([$messageId]);
+        $msg = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        echo json_encode(['success' => true, 'data' => $msg]);
+        exit;
+    } catch(PDOException $e) {
+        echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        exit;
+    }
+}
+
+function handleMarkAsRead($db, $input) {
+    try {
+        $userId = $input['user_id'] ?? null;
+        $otherUserId = $input['other_user_id'] ?? null;
+        
+        if (!$userId || !$otherUserId) {
+            echo json_encode(['success' => false, 'message' => 'Both user IDs required']);
+            exit;
+        }
+        
+        $stmt = $db->prepare("UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0");
+        $stmt->execute([$otherUserId, $userId]);
+        
+        echo json_encode(['success' => true, 'data' => ['updated' => $stmt->rowCount()]]);
         exit;
     } catch(PDOException $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);

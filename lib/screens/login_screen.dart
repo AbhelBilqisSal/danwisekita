@@ -41,26 +41,26 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              // Shield icon top logo
+              // DanWise Logo
               Center(
                 child: Container(
-                  width: 72,
-                  height: 72,
+                  width: 120,
+                  height: 120,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDC2626),
-                    borderRadius: BorderRadius.circular(20),
+                    shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFFDC2626).withOpacity(0.35),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                        color: const Color(0xFFDC2626).withOpacity(0.2),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.security, // or Icons.verified_user
-                    color: Colors.white,
-                    size: 38,
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/logo/danwise_logo.jpg',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),

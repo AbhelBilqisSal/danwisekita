@@ -6,6 +6,8 @@ import 'order_processing.dart';
 import 'product_management.dart';
 import 'profile_screen.dart';
 
+import 'chat_list_screen.dart';
+
 class SellerDashboard extends StatefulWidget {
   const SellerDashboard({super.key});
 
@@ -99,8 +101,9 @@ class _SellerDashboardState extends State<SellerDashboard> {
           IconButton(
             icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Fitur chat akan segera hadir')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatListScreen()),
               );
             },
           ),

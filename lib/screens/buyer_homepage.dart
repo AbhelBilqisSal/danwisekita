@@ -3,10 +3,12 @@ import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../providers/cart_provider.dart';
+import '../utils/constants.dart';
 import 'profile_screen.dart';
 import 'transaction_history.dart';
 import 'product_details.dart';
 import 'store_screen.dart';
+import 'chat_list_screen.dart';
 
 class BuyerHomepage extends StatefulWidget {
   const BuyerHomepage({super.key});
@@ -66,11 +68,11 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
 
   Widget _buildProductImage(dynamic imageUrl,
       {double height = 120, double width = double.infinity}) {
-    final String? image = imageUrl?.toString();
+    final String sanitizedUrl = AppConstants.sanitizeImageUrl(imageUrl?.toString());
 
-    if (image != null && image.isNotEmpty) {
+    if (sanitizedUrl.isNotEmpty) {
       return Image.network(
-        image,
+        sanitizedUrl,
         height: height,
         width: width,
         fit: BoxFit.cover,
@@ -323,6 +325,17 @@ class _BuyerHomepageState extends State<BuyerHomepage> {
                         ),
                       ),
                   ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chat_bubble_outline,
+                      color: Colors.white, size: 24),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const ChatListScreen()),
+                    );
+                  },
                 ),
                 IconButton(
                   icon: const Icon(Icons.notifications_outlined,

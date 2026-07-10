@@ -48,26 +48,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Top shield icon
+                // DanWise Logo
                 Center(
                   child: Container(
-                    width: 64,
-                    height: 64,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFDC2626),
-                      borderRadius: BorderRadius.circular(18),
+                      shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFDC2626).withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          color: const Color(0xFFDC2626).withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.security,
-                      color: Colors.white,
-                      size: 32,
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/logo/danwise_logo.jpg',
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                 ),

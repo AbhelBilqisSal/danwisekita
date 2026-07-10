@@ -347,4 +347,67 @@ class ApiService {
       return [];
     }
   }
+
+  // ==================== CHAT ====================
+
+  Future<List<dynamic>> getConversations(String userId) async {
+    try {
+      final result = await _client.get(
+        'chat/conversations',
+        queryParams: {'user_id': userId},
+      );
+      return result['data'] ?? [];
+    } on ApiException {
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getMessages(String userId, String otherUserId) async {
+    try {
+      final result = await _client.get(
+        'chat/messages',
+        queryParams: {'user_id': userId, 'other_user_id': otherUserId},
+      );
+      return result['data'] ?? [];
+    } on ApiException {
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> sendMessage(String senderId, String receiverId, String message) async {
+    try {
+      return await _client.post(
+        'chat/send',
+        body: {
+          'sender_id': senderId,
+          'receiver_id': receiverId,
+          'message': message,
+        },
+      );
+    } on ApiException catch (e) {
+      return {'success': false, 'message': e.message};
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> markAsRead(String userId, String otherUserId) async {
+    try {
+      return await _client.put(
+        'chat/read',
+        body: {
+          'user_id': userId,
+          'other_user_id': otherUserId,
+        },
+      );
+    } on ApiException catch (e) {
+      return {'success': false, 'message': e.message};
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
 }

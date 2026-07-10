@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io' as io;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../utils/constants.dart';
 
 class ProductManagementScreen extends StatefulWidget {
   const ProductManagementScreen({super.key});
@@ -14,6 +18,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = true;
   XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
 
   @override
   void initState() {
@@ -35,12 +40,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     setState(() => _isLoading = false);
   }
 
-  Widget _buildImagePreview(XFile? imageFile, {double width = 80, double height = 80}) {
-    if (imageFile != null) {
+  Widget _buildImagePreview(Uint8List? imageBytes, {double width = 80, double height = 80}) {
+    if (imageBytes != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          imageFile.path,
+        child: Image.memory(
+          imageBytes,
           width: width,
           height: height,
           fit: BoxFit.cover,
@@ -64,11 +69,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
   }
 
   Widget _buildProductImage(String? imageUrl, {double width = 80, double height = 80}) {
-    if (imageUrl != null && imageUrl.isNotEmpty) {
+    final sanitizedUrl = AppConstants.sanitizeImageUrl(imageUrl);
+    if (sanitizedUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Image.network(
-          imageUrl,
+          sanitizedUrl,
           width: width,
           height: height,
           fit: BoxFit.cover,
@@ -106,7 +112,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     );
   }
 
-  void _showImageSourceDialog() {
+  void _showImageSourceDialog(StateSetter dialogSetState) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -125,7 +131,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildSourceOption(
+                 _buildSourceOption(
                   icon: Icons.photo_library,
                   label: 'Galeri',
                   onTap: () async {
@@ -138,8 +144,14 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                       maxHeight: 1024,
                     );
                     if (image != null) {
+                      final bytes = await image.readAsBytes();
+                      dialogSetState(() {
+                        _selectedImage = image;
+                        _selectedImageBytes = bytes;
+                      });
                       setState(() {
                         _selectedImage = image;
+                        _selectedImageBytes = bytes;
                       });
                     }
                   },
@@ -157,8 +169,14 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                       maxHeight: 1024,
                     );
                     if (image != null) {
+                      final bytes = await image.readAsBytes();
+                      dialogSetState(() {
+                        _selectedImage = image;
+                        _selectedImageBytes = bytes;
+                      });
                       setState(() {
                         _selectedImage = image;
+                        _selectedImageBytes = bytes;
                       });
                     }
                   },
@@ -205,6 +223,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
     final formKey = GlobalKey<FormState>();
     bool isPublished = true;
     _selectedImage = null;
+    _selectedImageBytes = null;
 
     showDialog(
       context: context,
@@ -220,7 +239,7 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                   children: [
                     ElevatedButton.icon(
                       onPressed: () {
-                        _showImageSourceDialog();
+                        _showImageSourceDialog(setState);
                       },
                       icon: const Icon(Icons.add_photo_alternate),
                       label: const Text('Pilih Gambar Produk'),
@@ -230,12 +249,12 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (_selectedImage != null)
+                    if (_selectedImageBytes != null)
                       SizedBox(
                         height: 100,
                         child: Stack(
                           children: [
-                            _buildImagePreview(_selectedImage, width: 100, height: 100),
+                            _buildImagePreview(_selectedImageBytes, width: 100, height: 100),
                             Positioned(
                               top: 0,
                               right: 0,
@@ -243,6 +262,11 @@ class _ProductManagementScreenState extends State<ProductManagementScreen> {
                                 onTap: () {
                                   setState(() {
                                     _selectedImage = null;
+                                    _selectedImageBytes = null;
+                                  });
+                                  this.setState(() {
+                                    _selectedImage = null;
+                                    _selectedImageBytes = null;
                                   });
                                 },
                                 child: Container(

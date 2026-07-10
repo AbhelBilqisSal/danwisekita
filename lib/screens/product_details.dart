@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
 import '../models/cart_model.dart';
+import '../utils/constants.dart';
+import 'chat_detail_screen.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -37,19 +39,20 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   List<String> get _productImages {
     final image = widget.product['gambar']?.toString();
     if (image != null && image.isNotEmpty) {
-      return [image];
+      return [AppConstants.sanitizeImageUrl(image)];
     }
     return [];
   }
 
   Widget _buildProductImage(String imageUrl, {double height = 350}) {
+    final sanitizedUrl = AppConstants.sanitizeImageUrl(imageUrl);
     return Container(
       height: height,
       width: double.infinity,
       color: Colors.grey.shade50,
-      child: imageUrl.isNotEmpty
+      child: sanitizedUrl.isNotEmpty
           ? Image.network(
-              imageUrl,
+              sanitizedUrl,
               width: double.infinity,
               height: height,
               fit: BoxFit.contain,
@@ -365,7 +368,26 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             ),
                           ),
                           OutlinedButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              if (sellerId.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('ID toko tidak valid')),
+                                );
+                                return;
+                              }
+                              final storeName = widget.product['toko_name'] ?? 
+                                  widget.product['seller_name'] ?? 
+                                  'Toko Official';
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatDetailScreen(
+                                    otherUserId: sellerId,
+                                    otherUserName: storeName.toString(),
+                                  ),
+                                ),
+                              );
+                            },
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Color(0xFFDC2626)),
                               shape: RoundedRectangleBorder(
